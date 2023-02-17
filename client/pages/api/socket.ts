@@ -1,4 +1,4 @@
-import {Server} from 'socket.io'
+import {Server, Socket} from 'socket.io'
 
 const Sockethandler = (req:any, res:any)=>{
 
@@ -10,7 +10,7 @@ const Sockethandler = (req:any, res:any)=>{
     const io = new Server(res.socket.server);
     res.socket.server.io = io;
 
-    io.on('connection', socket=>{
+    io.on('connection', (socket:Socket)=>{
         console.log(`user Connected : ${socket.id}`);
 
 

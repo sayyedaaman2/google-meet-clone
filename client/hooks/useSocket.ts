@@ -2,7 +2,7 @@ import {useEffect, useRef} from 'react';
 
 const useSocket = ()=>{
     
-    const socketCreated = useRef(false)
+    const socketCreated = useRef<boolean>(false)
 
     useEffect(()=>{
         if(!socketCreated.current){

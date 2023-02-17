@@ -1,53 +1,53 @@
-import { useRouter } from 'next/router';
-import { useEffect, useRef, useState } from 'react';
-import { io } from 'socket.io-client';
-import useSocket from '../../hooks/useSocket';
+import { useRouter } from "next/router";
+import { useEffect, useRef, useState } from "react";
+import { io ,Socket} from "socket.io-client";
+import useSocket from "../../hooks/useSocket";
 
 const ICE_SERVERS = {
   iceServers: [
     {
-      urls: 'stun:openrelay.metered.ca:80',
-    }
+      urls: "stun:openrelay.metered.ca:80",
+    },
   ],
 };
 
 const Room = () => {
   useSocket();
-  const [micActive, setMicActive] = useState(true);
-  const [cameraActive, setCameraActive] = useState(true);
+  const [micActive, setMicActive] = useState<boolean>(true);
+  const [cameraActive, setCameraActive] = useState<boolean>(true);
 
   const router = useRouter();
-  const userVideoRef = useRef();
-  const peerVideoRef = useRef();
-  const rtcConnectionRef = useRef(null);
-  const socketRef = useRef();
-  const userStreamRef = useRef();
-  const hostRef = useRef(false);
+  const userVideoRef = useRef<HTMLVideoElement>();
+  const peerVideoRef = useRef<HTMLVideoElement>();
+  const rtcConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const socketRef = useRef<Socket | null>(null);
+  const userStreamRef = useRef<MediaStream | null>();
+  const hostRef = useRef<boolean>(false);
 
   const { id: roomName } = router.query;
-  useEffect(() => {
+  useEffect(()=> {
     socketRef.current = io();
     // First we join a room
-    socketRef.current.emit('join', roomName);
+    socketRef.current.emit("join", roomName);
 
-    socketRef.current.on('joined', handleRoomJoined);
+    socketRef.current.on("joined", handleRoomJoined);
     // If the room didn't exist, the server would emit the room was 'created'
-    socketRef.current.on('created', handleRoomCreated);
+    socketRef.current.on("created", handleRoomCreated);
     // Whenever the next person joins, the server emits 'ready'
-    socketRef.current.on('ready', initiateCall);
+    socketRef.current.on("ready", initiateCall);
 
     // Emitted when a peer leaves the room
-    socketRef.current.on('leave', onPeerLeave);
+    socketRef.current.on("leave", onPeerLeave);
 
     // If the room is full, we show an alert
-    socketRef.current.on('full', () => {
-      window.location.href = '/';
+    socketRef.current.on("full", () => {
+      window.location.href = "/";
     });
 
     // Event called when a remote user initiating the connection and
-    socketRef.current.on('offer', handleReceivedOffer);
-    socketRef.current.on('answer', handleAnswer);
-    socketRef.current.on('ice-candidate', handlerNewIceCandidateMsg);
+    socketRef.current.on("offer", handleReceivedOffer);
+    socketRef.current.on("answer", handleAnswer);
+    socketRef.current.on("ice-candidate", handlerNewIceCandidateMsg);
 
     // clear up after
     return () => socketRef.current.disconnect();
@@ -66,15 +66,13 @@ const Room = () => {
         userVideoRef.current.onloadedmetadata = () => {
           userVideoRef.current.play();
         };
-        socketRef.current.emit('ready', roomName);
+        socketRef.current.emit("ready", roomName);
       })
       .catch((err) => {
         /* handle the error */
-        console.log('error', err);
+        console.log("error", err);
       });
   };
-
-  
 
   const handleRoomCreated = () => {
     hostRef.current = true;
@@ -102,17 +100,17 @@ const Room = () => {
       rtcConnectionRef.current = createPeerConnection();
       rtcConnectionRef.current.addTrack(
         userStreamRef.current.getTracks()[0],
-        userStreamRef.current,
+        userStreamRef.current
       );
       rtcConnectionRef.current.addTrack(
         userStreamRef.current.getTracks()[1],
-        userStreamRef.current,
+        userStreamRef.current
       );
       rtcConnectionRef.current
         .createOffer()
         .then((offer) => {
           rtcConnectionRef.current.setLocalDescription(offer);
-          socketRef.current.emit('offer', offer, roomName);
+          socketRef.current.emit("offer", offer, roomName);
         })
         .catch((error) => {
           console.log(error);
@@ -136,7 +134,7 @@ const Room = () => {
       rtcConnectionRef.current.close();
       rtcConnectionRef.current = null;
     }
-  }
+  };
 
   /**
    * Takes a userid which is also the socketid and returns a WebRTC Peer
@@ -155,7 +153,6 @@ const Room = () => {
     // We implement our onTrack method for when we receive tracks
     connection.ontrack = handleTrackEvent;
     return connection;
-
   };
 
   const handleReceivedOffer = (offer) => {
@@ -163,11 +160,11 @@ const Room = () => {
       rtcConnectionRef.current = createPeerConnection();
       rtcConnectionRef.current.addTrack(
         userStreamRef.current.getTracks()[0],
-        userStreamRef.current,
+        userStreamRef.current
       );
       rtcConnectionRef.current.addTrack(
         userStreamRef.current.getTracks()[1],
-        userStreamRef.current,
+        userStreamRef.current
       );
       rtcConnectionRef.current.setRemoteDescription(offer);
 
@@ -175,7 +172,7 @@ const Room = () => {
         .createAnswer()
         .then((answer) => {
           rtcConnectionRef.current.setLocalDescription(answer);
-          socketRef.current.emit('answer', answer, roomName);
+          socketRef.current.emit("answer", answer, roomName);
         })
         .catch((error) => {
           console.log(error);
@@ -191,7 +188,7 @@ const Room = () => {
 
   const handleICECandidateEvent = (event) => {
     if (event.candidate) {
-      socketRef.current.emit('ice-candidate', event.candidate, roomName);
+      socketRef.current.emit("ice-candidate", event.candidate, roomName);
     }
   };
 
@@ -218,20 +215,22 @@ const Room = () => {
   };
 
   const toggleMic = () => {
-    toggleMediaStream('audio', micActive);
+    toggleMediaStream("audio", micActive);
     setMicActive((prev) => !prev);
   };
 
   const toggleCamera = () => {
-    toggleMediaStream('video', cameraActive);
+    toggleMediaStream("video", cameraActive);
     setCameraActive((prev) => !prev);
   };
 
   const leaveRoom = () => {
-    socketRef.current.emit('leave', roomName); // Let's the server know that user has left the room.
+    socketRef.current.emit("leave", roomName); // Let's the server know that user has left the room.
 
     if (userVideoRef.current.srcObject) {
-      userVideoRef.current.srcObject.getTracks().forEach((track) => track.stop()); // Stops receiving all track of User.
+      userVideoRef.current.srcObject
+        .getTracks()
+        .forEach((track) => track.stop()); // Stops receiving all track of User.
     }
     if (peerVideoRef.current.srcObject) {
       peerVideoRef.current.srcObject
@@ -246,7 +245,7 @@ const Room = () => {
       rtcConnectionRef.current.close();
       rtcConnectionRef.current = null;
     }
-    router.push('/')
+    router.push("/");
   };
 
   return (
@@ -254,13 +253,13 @@ const Room = () => {
       <video autoPlay ref={userVideoRef} />
       <video autoPlay ref={peerVideoRef} />
       <button onClick={toggleMic} type="button">
-        {micActive ? 'Mute Mic' : 'UnMute Mic'}
+        {micActive ? "Mute Mic" : "UnMute Mic"}
       </button>
       <button onClick={leaveRoom} type="button">
         Leave
       </button>
       <button onClick={toggleCamera} type="button">
-        {cameraActive ? 'Stop Camera' : 'Start Camera'}
+        {cameraActive ? "Stop Camera" : "Start Camera"}
       </button>
     </div>
   );
